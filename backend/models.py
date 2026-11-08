@@ -1,8 +1,8 @@
 """The shapes of the backend's requests and responses."""
 
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 Status = Literal["waiting", "in_progress", "awaiting_sign_off", "decided"]
 DecisionKind = Literal["approve", "decline", "refer"]
@@ -137,3 +137,43 @@ class Handler(BaseModel):
     name: str
     role: str
     can_approve_over_limit: bool
+
+
+StepKind = Literal["tool_call", "tool_result", "reply", "error"]
+
+
+class Step(BaseModel):
+    step_id: int
+    kind: StepKind
+    text: str
+    created_at: str
+
+
+class StartRequest(BaseModel):
+    thread_id: str = Field(min_length=1)
+
+
+class StepRequest(BaseModel):
+    kind: StepKind
+    text: str = Field(min_length=1)
+
+
+class DecisionRequest(BaseModel):
+    decision: DecisionKind
+    payout: float = Field(ge=0)
+    reasons: str = Field(min_length=1)
+    policy_section: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def payout_only_on_approval(self) -> Self:
+        if self.decision != "approve" and self.payout != 0:
+            raise ValueError("The payout must be 0 unless the claim is approved")
+        return self
+
+
+class PaymentRequest(BaseModel):
+    amount: float = Field(gt=0)
+
+
+class SignOffRequest(BaseModel):
+    handler_id: str

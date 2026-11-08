@@ -91,15 +91,15 @@ Success criteria:
 
 Success criteria:
 
-- [ ] `uv run pytest -q backend` passes, with a test for each rule above and each refusal.
-- [ ] Through the API: start CLM-1001, record an approval of $420.00, pay $420.00. The claim is `decided` with a payment of $420.00. Paying again returns 409.
-- [ ] Through the API: start CLM-1003, record an approval of $3,750.00. The claim is `awaiting_sign_off`. `pay_claim` with 3750.00 returns 403 and no payment is recorded.
-- [ ] `sign_off` on CLM-1003 with `HND-01` returns 200; the claim is `decided`, with the sign-off and a payment of $3,750.00. A second `sign_off` returns 409.
-- [ ] A payout of exactly $1,000.00 goes straight to `decided` and can be paid without sign-off.
-- [ ] Recording a decline with a payout of 50 returns 422; deciding a `waiting` claim returns 409; `sign_off` with an unknown handler returns 404.
-- [ ] Steps posted to a claim come back from `list_steps` in the order they were posted.
-- [ ] `return_to_queue` moves an in-progress claim back to `waiting`.
-- [ ] `npm run check:python` passes, with coverage at or above 80%.
+- [x] `uv run pytest -q backend` passes, with a test for each rule above and each refusal.
+- [x] Through the API: start CLM-1001, record an approval of $420.00, pay $420.00. The claim is `decided` with a payment of $420.00. Paying again returns 409.
+- [x] Through the API: start CLM-1003, record an approval of $3,750.00. The claim is `awaiting_sign_off`. `pay_claim` with 3750.00 returns 403 and no payment is recorded.
+- [x] `sign_off` on CLM-1003 with `HND-01` returns 200; the claim is `decided`, with the sign-off and a payment of $3,750.00. A second `sign_off` returns 409.
+- [x] A payout of exactly $1,000.00 goes straight to `decided` and can be paid without sign-off.
+- [x] Recording a decline with a payout of 50 returns 422; deciding a `waiting` claim returns 409; `sign_off` with an unknown handler returns 404.
+- [x] Steps posted to a claim come back from `list_steps` in the order they were posted.
+- [x] `return_to_queue` moves an in-progress claim back to `waiting`.
+- [x] `npm run check:python` passes, with coverage at or above 80%.
 
 ## Phase 3: The UnderCover Agent
 
