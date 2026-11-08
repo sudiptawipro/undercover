@@ -171,11 +171,11 @@ Success criteria:
 
 Success criteria:
 
-- [ ] `npm run e2e` passes, with tests that: the queue shows 25 waiting claims; a claim page shows its story and documents; the instructions page shows the instructions; steps posted to a claim appear on its page; an approval over $1,000 shows as Waiting for sign-off, a direct payment is refused with 403, and signing off in the dashboard leaves it Decided and paid.
-- [ ] Running `npm run e2e` twice in a row passes both times, and leaves `backend/undercover.db` unchanged.
-- [ ] The old health test is replaced or kept passing.
-- [ ] `docs/STATUS.md` is up to date, and the README tells a new reader how to start the backend, the dashboard and the agent.
-- [ ] `npm run check` passes in full.
+- [x] `npm run e2e` passes, with tests that: the queue shows 25 waiting claims; a claim page shows its story and documents; the instructions page shows the instructions; steps posted to a claim appear on its page; an approval over $1,000 shows as Waiting for sign-off, a direct payment is refused with 403, and signing off in the dashboard leaves it Decided and paid.
+- [x] Running `npm run e2e` twice in a row passes both times, and leaves `backend/undercover.db` unchanged.
+- [x] The old health test is replaced or kept passing.
+- [x] `docs/STATUS.md` is up to date, and the README tells a new reader how to start the backend, the dashboard and the agent.
+- [x] `npm run check` passes in full.
 
 ## Not in this plan
 

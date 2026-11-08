@@ -30,6 +30,16 @@ Just ask your coding agent (Cursor, Claude Code, etc.). I've equipped it with fu
 
 I'd love to see what you build! Please share it with a pull request to `community_contributions`. The steps for that, and for pulling the latest code, are in [guides/for_agents/AGENT_GIT_GUIDE.md](guides/for_agents/AGENT_GIT_GUIDE.md), and your coding agent can take you through them.
 
+## Running the product
+
+After `uv sync` and `npm install`:
+
+- `npm run dev` starts the backend on port 8000 and the dashboard at [localhost:5173](http://localhost:5173).
+- `uv run -m agent CLM-1001` runs the agent on one claim, and `uv run -m agent --queue` on every waiting claim. You can also start it from a claim's page in the dashboard.
+- `npm run check` runs every check.
+
+[docs/STATUS.md](docs/STATUS.md) says what's built so far.
+
 ## The journey
 
 Week 1 Day 1 is in the `setup/` folder and Week 1 Day 2 is in `labs/`. From Week 1 Day 3 onwards we work in the entire repo. The installation steps for each day are in [setup/INSTRUCTIONS.md](setup/INSTRUCTIONS.md), and the [guides](guides/) folder has guides to the command line, git, Python and other foundations if you'd like a refresher.
