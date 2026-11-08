@@ -11,7 +11,7 @@ The pilot is built: all six phases of `docs/PLAN.md` are done.
   - The agent's instructions are in `backend/instructions.md`.
 - `agent/`: the UnderCover Agent, LangChain's `create_agent` on OpenRouter (`openai/gpt-6-luna` with low reasoning effort, or `MODEL_NAME`).
   - The entry point `run(claim_id, thread_id)` fetches the instructions from the backend, starts the claim, and records each tool call, result and the final reply as a step. Every run ends with exactly one `reply` or `error` step.
-  - If a run ends without a decision, or the model fails, it records an error step and puts the claim back in the queue.
+  - If a run ends without a decision, or the model fails, it records an error step and puts the claim back in the queue. If the model fails after the decision, such as on a free-tier rate limit, the decision stands.
   - Its tools wrap the API: `get_claim`, `get_policy`, `get_claim_history`, `get_policy_wording`, `record_decision` and `pay_claim`. The two that write act only on the claim being worked.
   - `BACKEND_URL` points it at a different backend.
 - `dashboard/`: React in UnderCover's brand, with light and dark mode.

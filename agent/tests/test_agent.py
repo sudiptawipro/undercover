@@ -249,3 +249,20 @@ def test_a_run_ends_with_one_reply_step():
     recorded = steps("CLM-1001")
     assert [s["kind"] for s in recorded] == ["tool_call", "tool_result", "reply"]
     assert recorded[-1]["text"] == "The agent finished."
+
+
+def test_a_model_failure_after_the_decision_keeps_the_decision():
+    def decide_then_fail():
+        yield decide(3750.0)
+        raise RuntimeError("Rate limit exceeded: free-models-per-day")
+
+    reply = main.run("CLM-1003", "thread-1", StubModel(messages=decide_then_fail()))
+    assert reply == (
+        "The agent stopped with an error: Rate limit exceeded: free-models-per-day"
+    )
+    result = claim("CLM-1003")
+    assert result["status"] == "awaiting_sign_off"
+    assert result["decision"]["payout"] == 3750.0
+    last = steps("CLM-1003")[-1]
+    assert last["kind"] == "error"
+    assert last["text"] == reply

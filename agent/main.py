@@ -178,9 +178,10 @@ def record_message(claim_id: str, message: BaseMessage) -> str:
 
 
 def give_up(claim_id: str, reason: str) -> str:
-    """Record why the run ended without a decision and put the claim back."""
+    """Record why the run ended early, and put the claim back if it is undecided."""
     record_step(claim_id, "error", reason)
-    api_post(f"/api/claims/{claim_id}/return", {}).raise_for_status()
+    if api_get(f"/api/claims/{claim_id}").json()["status"] == "in_progress":
+        api_post(f"/api/claims/{claim_id}/return", {}).raise_for_status()
     return reason
 
 
