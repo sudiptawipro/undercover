@@ -137,12 +137,12 @@ Success criteria:
 
 Success criteria:
 
-- [ ] `npm run check:ts` passes: Prettier, ESLint, `tsc` in strict mode with no `any`, and vitest with coverage at or above 80%. Component tests stub `fetch`.
-- [ ] With `npm run dev` running, in the browser through the Playwright MCP server: the queue shows 25 claims, all Waiting, with the four state counts.
-- [ ] Clicking CLM-1001 opens `#/claims/CLM-1001` with the story, the three items, the four documents and the plan.
-- [ ] After the Phase 2 API steps, CLM-1003 shows as Waiting for sign-off in the queue, and its page shows the approval, $3,750.00, the reasons and the section.
-- [ ] Screenshots in light and dark mode match `docs/BRAND.md`: the right fonts and colors, no one-edge borders, no lines across the top of the page.
-- [ ] The pages work at a phone width of 390 pixels without scrolling sideways.
+- [x] `npm run check:ts` passes: Prettier, ESLint, `tsc` in strict mode with no `any`, and vitest with coverage at or above 80%. Component tests stub `fetch`.
+- [x] With `npm run dev` running, in the browser through the Playwright MCP server: the queue shows 25 claims, all Waiting, with the four state counts.
+- [x] Clicking CLM-1001 opens `#/claims/CLM-1001` with the story, the three items, the four documents and the plan.
+- [x] After the Phase 2 API steps, CLM-1003 shows as Waiting for sign-off in the queue, and its page shows the approval, $3,750.00, the reasons and the section.
+- [x] Screenshots in light and dark mode match `docs/BRAND.md`: the right fonts and colors, no one-edge borders, no lines across the top of the page.
+- [x] The pages work at a phone width of 390 pixels without scrolling sideways.
 
 ## Phase 5: The agent at work, sign-off and the instructions page
 
