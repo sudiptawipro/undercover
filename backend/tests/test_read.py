@@ -1,4 +1,6 @@
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 from backend import db
 
@@ -116,3 +118,33 @@ def test_no_response_carries_the_security_claim(client):
 def test_seeding_again_adds_no_duplicates(client):
     db.init_db()
     assert len(client.get("/api/claims").json()) == 25
+
+
+def test_a_request_can_finish_in_another_thread(tmp_path, monkeypatch):
+    monkeypatch.setenv("UNDERCOVER_DB", str(tmp_path / "test.db"))
+    db.init_db()
+    requests = db.get_db()
+    next(requests).execute("SELECT 1")
+    errors = []
+
+    def finish():
+        try:
+            next(requests, None)
+        except Exception as error:
+            errors.append(error)
+
+    thread = threading.Thread(target=finish)
+    thread.start()
+    thread.join()
+    assert errors == []
+
+
+def test_concurrent_requests_all_succeed(client):
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        codes = list(
+            pool.map(
+                lambda path: client.get(path).status_code,
+                ["/api/claims", "/api/policies/POL-2001", "/api/policy-wording"] * 10,
+            )
+        )
+    assert set(codes) == {200}

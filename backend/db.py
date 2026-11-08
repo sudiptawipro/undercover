@@ -101,8 +101,12 @@ def init_db() -> None:
 
 
 def get_db() -> Iterator[sqlite3.Connection]:
-    """Open a connection for one request, committing its changes at the end."""
-    conn = sqlite3.connect(db_path(), timeout=10)
+    """Open a connection for one request, committing its changes at the end.
+
+    FastAPI may finish the request in a different thread from the one that
+    opened the connection, so the connection must not be tied to one thread.
+    """
+    conn = sqlite3.connect(db_path(), timeout=10, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     try:
         with conn:

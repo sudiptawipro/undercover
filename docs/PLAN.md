@@ -115,14 +115,14 @@ Success criteria:
 
 Success criteria:
 
-- [ ] `uv run pytest -q agent` passes. Tests use the skeleton's stub model with scripted tool calls against the real backend through `TestClient`; no test calls a model.
-- [ ] A stubbed run on CLM-1001 that reads, approves $420.00 and pays leaves the claim `decided` and paid, with each tool call, tool result and the reply in `list_steps`.
-- [ ] A stubbed run on CLM-1003 that approves $3,750.00 and then tries to pay leaves the claim `awaiting_sign_off` with no payment, and the steps show the payment was refused.
-- [ ] A stubbed run that ends without a decision, and one where the model raises, each leave the claim `waiting` with an `error` step.
-- [ ] A backend test with the entry point stubbed shows `run_agent` returns 202 for a waiting claim and 409 for one that isn't.
-- [ ] Live, once (a few cents on the default model, or free with `MODEL_NAME=openrouter/free`): `uv run -m agent CLM-1001` ends with the claim decided, a payout, two or three sentences of reasons and a policy section.
-- [ ] Live, once: `uv run -m agent CLM-1003`. Whatever the agent decides, the result obeys the rule: if it approves over $1,000, the claim is `awaiting_sign_off` and has no payment.
-- [ ] `npm run check:python` passes, with coverage at or above 80%.
+- [x] `uv run pytest -q agent` passes. Tests use the skeleton's stub model with scripted tool calls against the real backend through `TestClient`; no test calls a model.
+- [x] A stubbed run on CLM-1001 that reads, approves $420.00 and pays leaves the claim `decided` and paid, with each tool call, tool result and the reply in `list_steps`.
+- [x] A stubbed run on CLM-1003 that approves $3,750.00 and then tries to pay leaves the claim `awaiting_sign_off` with no payment, and the steps show the payment was refused.
+- [x] A stubbed run that ends without a decision, and one where the model raises, each leave the claim `waiting` with an `error` step.
+- [x] A backend test with the entry point stubbed shows `run_agent` returns 202 for a waiting claim and 409 for one that isn't.
+- [x] Live, once (a few cents on the default model, or free with `MODEL_NAME=openrouter/free`): `uv run -m agent CLM-1001` ends with the claim decided, a payout, two or three sentences of reasons and a policy section.
+- [x] Live, once: `uv run -m agent CLM-1003`. Whatever the agent decides, the result obeys the rule: if it approves over $1,000, the claim is `awaiting_sign_off` and has no payment.
+- [x] `npm run check:python` passes, with coverage at or above 80%.
 
 ## Phase 4: The dashboard's queue and claim pages
 

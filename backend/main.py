@@ -2,13 +2,15 @@
 
 import json
 import sqlite3
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 
+from agent import main as agent
 from backend.db import DATA, get_db, init_db, now
 from backend.models import (
     Claim,
@@ -36,7 +38,8 @@ PLANS = json.loads((DATA / "plans.json").read_text(encoding="utf-8"))
 WORDING = (DATA / "policy_wording.md").read_text(encoding="utf-8")
 LIMIT: float = COMPANY["payout_approval_limit"]
 
-Db = Annotated[sqlite3.Connection, Depends(get_db)]
+# "function" commits each request's changes before its response is sent.
+Db = Annotated[sqlite3.Connection, Depends(get_db, scope="function")]
 
 
 @asynccontextmanager
@@ -72,6 +75,22 @@ def move_claim(
     if not moved:
         status = find_claim(db, claim_id)["status"]
         raise HTTPException(409, f"Claim {claim_id} is {status}, not {from_status}")
+
+
+def begin_work(db: sqlite3.Connection, claim_id: str, thread_id: str) -> None:
+    """Move a waiting claim to in progress in a thread, or raise a 409.
+
+    Starting again in the same thread is allowed, so a run the backend started
+    can call start_claim itself.
+    """
+    started = db.execute(
+        "UPDATE claims SET status = 'in_progress', thread_id = ? WHERE claim_id = ? "
+        "AND (status = 'waiting' OR (status = 'in_progress' AND thread_id = ?))",
+        (thread_id, claim_id, thread_id),
+    ).rowcount
+    if not started:
+        status = find_claim(db, claim_id)["status"]
+        raise HTTPException(409, f"Claim {claim_id} is {status}, not waiting")
 
 
 def load_claim(db: sqlite3.Connection, claim_id: str) -> Claim:
@@ -197,14 +216,7 @@ def list_handlers(db: Db) -> list[Handler]:
 @app.post("/api/claims/{claim_id}/start", operation_id="start_claim")
 def start_claim(claim_id: str, body: StartRequest, db: Db) -> Claim:
     """Start work on a waiting claim in the given thread."""
-    started = db.execute(
-        "UPDATE claims SET status = 'in_progress', thread_id = ? WHERE claim_id = ? "
-        "AND (status = 'waiting' OR (status = 'in_progress' AND thread_id = ?))",
-        (body.thread_id, claim_id, body.thread_id),
-    ).rowcount
-    if not started:
-        status = find_claim(db, claim_id)["status"]
-        raise HTTPException(409, f"Claim {claim_id} is {status}, not waiting")
+    begin_work(db, claim_id, body.thread_id)
     return load_claim(db, claim_id)
 
 
@@ -305,4 +317,13 @@ def sign_off(claim_id: str, body: SignOffRequest, db: Db) -> Claim:
 def return_to_queue(claim_id: str, db: Db) -> Claim:
     """Put a claim in progress back in the queue, waiting."""
     move_claim(db, claim_id, "in_progress", "waiting")
+    return load_claim(db, claim_id)
+
+
+@app.post("/api/claims/{claim_id}/run", operation_id="run_agent", status_code=202)
+def run_agent(claim_id: str, background_tasks: BackgroundTasks, db: Db) -> Claim:
+    """Start the agent on a waiting claim; it works in the background."""
+    thread_id = str(uuid.uuid4())
+    begin_work(db, claim_id, thread_id)
+    background_tasks.add_task(agent.run, claim_id, thread_id)
     return load_claim(db, claim_id)
