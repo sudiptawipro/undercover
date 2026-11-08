@@ -1,18 +1,28 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { ClaimPage } from "./ClaimPage";
+import type { Claim, Step } from "./api";
+import { CLAIM_POLL_MS, ClaimPage } from "./ClaimPage";
 import {
   Reply,
   decidedClaim,
+  handlers,
   heldClaim,
   policy,
   signedOffClaim,
+  steps,
   stubApi,
   waitingClaim,
 } from "./testing";
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -133,4 +143,168 @@ it("says when the claim cannot be found", async () => {
   expect(
     await screen.findByText("Could not load claim CLM-0000: No claim CLM-0000"),
   ).toBeDefined();
+});
+
+function calls(fetchMock: ReturnType<typeof stubApi>, key: string) {
+  return fetchMock.mock.calls.filter(
+    ([path, init]) => `${init?.method ?? "GET"} ${path}` === key,
+  );
+}
+
+const reply: Step = {
+  step_id: 3,
+  kind: "reply",
+  text: "I approved and paid the claim for $420.00.",
+  created_at: "2026-11-08T14:01:43+00:00",
+};
+
+// What the backend shows at each stage of a run.
+const stages: { claim: Claim; steps: Step[] }[] = [
+  { claim: waitingClaim, steps: [] },
+  {
+    claim: { ...waitingClaim, status: "in_progress" },
+    steps: steps.slice(0, 1),
+  },
+  { claim: { ...decidedClaim, payment: null }, steps },
+  { claim: decidedClaim, steps: [...steps, reply] },
+];
+
+it("runs the agent and follows it until its run ends", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  let stage = 0;
+  const fetchMock = stubApi({
+    "GET /api/claims/CLM-1001": () => stages[stage]?.claim,
+    "GET /api/claims/CLM-1001/steps": () => stages[stage]?.steps,
+    "POST /api/claims/CLM-1001/run": () => {
+      stage = 1;
+      return new Reply(202, stages[1]?.claim);
+    },
+    "GET /api/policies/POL-2001": policy,
+  });
+  const advance = async () => {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CLAIM_POLL_MS);
+    });
+  };
+  render(<ClaimPage claimId="CLM-1001" />);
+  expect(await screen.findByText("No activity yet.")).toBeDefined();
+
+  fireEvent.click(screen.getByRole("button", { name: "Run the agent" }));
+  expect(await screen.findByRole("status")).toBeDefined();
+  expect(screen.getByText("The agent is working on this claim…")).toBeDefined();
+  expect(screen.getByText("Read the claim")).toBeDefined();
+  expect(screen.getByText("Action")).toBeDefined();
+  expect(screen.queryByRole("button", { name: "Run the agent" })).toBeNull();
+  expect(calls(fetchMock, "POST /api/claims/CLM-1001/run")).toHaveLength(1);
+
+  stage = 2;
+  await advance();
+  expect(await screen.findByText("Not paid yet")).toBeDefined();
+  expect(screen.getByText("get_claim: {...}")).toBeDefined();
+  expect(screen.getByRole("status")).toBeDefined();
+
+  stage = 3;
+  await advance();
+  expect(await screen.findByText(/^Paid \$420\.00 on/)).toBeDefined();
+  expect(
+    screen.getByText("I approved and paid the claim for $420.00."),
+  ).toBeDefined();
+  expect(screen.queryByRole("status")).toBeNull();
+
+  const loads = calls(fetchMock, "GET /api/claims/CLM-1001").length;
+  await advance();
+  await advance();
+  expect(calls(fetchMock, "GET /api/claims/CLM-1001")).toHaveLength(loads);
+});
+
+it("shows why the agent could not start", async () => {
+  stubApi({
+    "GET /api/claims/CLM-1001": waitingClaim,
+    "GET /api/claims/CLM-1001/steps": [],
+    "GET /api/policies/POL-2001": policy,
+    "GET /api/handlers": handlers,
+    "POST /api/claims/CLM-1001/run": new Reply(409, {
+      detail: "Claim CLM-1001 is in_progress, not waiting",
+    }),
+  });
+  render(<ClaimPage claimId="CLM-1001" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Run the agent" }));
+  expect(
+    await screen.findByText("Claim CLM-1001 is in_progress, not waiting"),
+  ).toBeDefined();
+});
+
+it("signs off a large payout as the chosen handler", async () => {
+  let signed = false;
+  const fetchMock = stubApi({
+    "GET /api/claims/CLM-1003": () => (signed ? signedOffClaim : heldClaim),
+    "GET /api/claims/CLM-1003/steps": [],
+    "GET /api/policies/POL-2001": policy,
+    "GET /api/handlers": handlers,
+    "POST /api/claims/CLM-1003/sign-off": () => {
+      signed = true;
+      return signedOffClaim;
+    },
+  });
+  render(<ClaimPage claimId="CLM-1003" />);
+
+  const select = await screen.findByLabelText("Handler");
+  await screen.findByRole("option", {
+    name: "Marcus Oyelaran, Claims Handler",
+  });
+  fireEvent.change(select, { target: { value: "HND-02" } });
+  fireEvent.click(screen.getByRole("button", { name: "Sign off and pay" }));
+
+  expect(await screen.findByText(/^Paid \$3,750\.00 on/)).toBeDefined();
+  expect(screen.getByText(/^Dana Whitfield,/)).toBeDefined();
+  expect(screen.queryByRole("button", { name: "Sign off and pay" })).toBeNull();
+  const [signOff] = calls(fetchMock, "POST /api/claims/CLM-1003/sign-off");
+  expect(signOff[1]?.body).toBe(JSON.stringify({ handler_id: "HND-02" }));
+});
+
+it("signs off as the first handler unless another is chosen", async () => {
+  const fetchMock = stubApi({
+    "GET /api/claims/CLM-1003": heldClaim,
+    "GET /api/claims/CLM-1003/steps": [],
+    "GET /api/policies/POL-2001": policy,
+    "GET /api/handlers": handlers,
+    "POST /api/claims/CLM-1003/sign-off": signedOffClaim,
+  });
+  render(<ClaimPage claimId="CLM-1003" />);
+  await screen.findByRole("option", {
+    name: "Dana Whitfield, Senior Claims Handler",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Sign off and pay" }));
+  await screen.findByText("Payment held until a handler signs off");
+  const [signOff] = calls(fetchMock, "POST /api/claims/CLM-1003/sign-off");
+  expect(signOff[1]?.body).toBe(JSON.stringify({ handler_id: "HND-01" }));
+});
+
+it("offers no actions on a decided claim", async () => {
+  stubClaim(decidedClaim);
+  render(<ClaimPage claimId="CLM-1001" />);
+  await screen.findByText("Approved");
+  expect(screen.queryByRole("button")).toBeNull();
+  expect(screen.queryByLabelText("Handler")).toBeNull();
+});
+
+it("shows an error step from the agent", async () => {
+  stubApi({
+    "GET /api/claims/CLM-1001": waitingClaim,
+    "GET /api/claims/CLM-1001/steps": [
+      {
+        step_id: 9,
+        kind: "error",
+        text: "The agent finished without recording a decision.",
+        created_at: "2026-11-08T14:01:30+00:00",
+      },
+    ],
+    "GET /api/policies/POL-2001": policy,
+    "GET /api/handlers": handlers,
+  });
+  render(<ClaimPage claimId="CLM-1001" />);
+  expect(
+    await screen.findByText("The agent finished without recording a decision."),
+  ).toBeDefined();
+  expect(screen.getByText("Stopped")).toBeDefined();
 });

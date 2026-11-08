@@ -154,20 +154,25 @@ def describe_call(name: str, args: dict[str, Any]) -> str:
 
 
 def record_message(claim_id: str, message: BaseMessage) -> str:
-    """Record the steps in one message, and return any text the agent wrote."""
+    """Record the steps in one message, and return the agent's final reply, if any.
+
+    Only the final message, the one with no tool calls, is recorded as a reply,
+    so a reply or an error step always marks the end of a run.
+    """
     if isinstance(message, ToolMessage):
         text = message.text
         if len(text) > RESULT_LENGTH:
             text = text[:RESULT_LENGTH] + "..."
         record_step(claim_id, "tool_result", f"{message.name}: {text}")
         return ""
-    if isinstance(message, AIMessage):
+    if isinstance(message, AIMessage) and message.tool_calls:
         for call in message.tool_calls:
             record_step(
                 claim_id, "tool_call", describe_call(call["name"], call["args"])
             )
-        if message.text:
-            record_step(claim_id, "reply", message.text)
+        return ""
+    if isinstance(message, AIMessage) and message.text:
+        record_step(claim_id, "reply", message.text)
         return message.text
     return ""
 
@@ -210,6 +215,9 @@ def run(claim_id: str, thread_id: str, llm: BaseChatModel | None = None) -> str:
     status = api_get(f"/api/claims/{claim_id}").json()["status"]
     if status == "in_progress":
         return give_up(claim_id, "The agent finished without recording a decision.")
+    if not reply:
+        reply = "The agent finished."
+        record_step(claim_id, "reply", reply)
     return reply
 
 

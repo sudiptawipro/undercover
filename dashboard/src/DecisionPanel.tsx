@@ -1,5 +1,7 @@
-import type { Claim } from "./api";
+import { useState } from "react";
+import { api, errorMessage, type Claim, type Handler } from "./api";
 import { DECISION_LABELS, dateTime, money } from "./format";
+import { SignOffForm } from "./SignOffForm";
 
 function PaymentLine({ claim }: Readonly<{ claim: Claim }>) {
   if (claim.payment) {
@@ -18,8 +20,28 @@ function PaymentLine({ claim }: Readonly<{ claim: Claim }>) {
   return null;
 }
 
-export function DecisionPanel({ claim }: Readonly<{ claim: Claim }>) {
+export function DecisionPanel({
+  claim,
+  handlers,
+  onChange,
+}: Readonly<{ claim: Claim; handlers: Handler[]; onChange: () => void }>) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { decision, sign_off: signOff } = claim;
+
+  const act = (request: Promise<Claim>) => {
+    setBusy(true);
+    setError(null);
+    void request
+      .then(onChange)
+      .catch((caught: unknown) => {
+        setError(errorMessage(caught));
+      })
+      .finally(() => {
+        setBusy(false);
+      });
+  };
+
   return (
     <section className="panel">
       <h2>Decision</h2>
@@ -51,6 +73,27 @@ export function DecisionPanel({ claim }: Readonly<{ claim: Claim }>) {
       ) : (
         <p className="muted">The agent has not decided this claim yet.</p>
       )}
+      {claim.status === "waiting" && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            act(api.runAgent(claim.claim_id));
+          }}
+        >
+          Run the agent
+        </button>
+      )}
+      {claim.status === "awaiting_sign_off" && (
+        <SignOffForm
+          handlers={handlers}
+          busy={busy}
+          onSignOff={(handlerId) => {
+            act(api.signOff(claim.claim_id, handlerId));
+          }}
+        />
+      )}
+      {error && <p className="alert">{error}</p>}
     </section>
   );
 }

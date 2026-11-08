@@ -227,3 +227,25 @@ def test_a_decline_tells_the_agent_there_is_nothing_to_pay():
         }
     )
     assert result == "Decision recorded. There is nothing to pay."
+
+
+def test_a_run_ends_with_one_reply_step():
+    narrating = AIMessage(
+        content="Let me record the decision.",
+        tool_calls=[
+            {
+                "name": "record_decision",
+                "args": {
+                    "decision": "decline",
+                    "payout": 0,
+                    "reasons": "Not covered.",
+                    "policy_section": POLICY_SECTION,
+                },
+                "id": "1",
+            }
+        ],
+    )
+    assert main.run("CLM-1001", "thread-1", stub(narrating, AIMessage(content="")))
+    recorded = steps("CLM-1001")
+    assert [s["kind"] for s in recorded] == ["tool_call", "tool_result", "reply"]
+    assert recorded[-1]["text"] == "The agent finished."

@@ -52,3 +52,17 @@ it("follows links to a claim and back", async () => {
     await screen.findByRole("heading", { name: "Claims queue" }),
   ).toBeDefined();
 });
+
+it("opens the instructions from the header", async () => {
+  stubAll();
+  window.location.hash = "#/instructions";
+  render(<App />);
+  expect(
+    await screen.findByRole("heading", { name: "The agent's instructions" }),
+  ).toBeDefined();
+  expect(
+    screen
+      .getByRole("link", { name: "Instructions" })
+      .getAttribute("aria-current"),
+  ).toBe("page");
+});

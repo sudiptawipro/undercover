@@ -155,11 +155,11 @@ Success criteria:
 
 Success criteria:
 
-- [ ] `npm run check:ts` passes, with vitest tests for the run button, the polling (with fake timers), the sign-off and the instructions page.
-- [ ] In the browser: on a fresh database, clicking "Run the agent" on CLM-1001 moves it to In progress, the steps appear one by one without a reload, and the page settles on Decided with the decision and reasons. (One live model run.)
-- [ ] In the browser: on CLM-1003 after the Phase 2 API steps (approved for $3,750.00, waiting for sign-off), choosing Dana Whitfield and clicking "Sign off and pay" moves it to Decided and shows "Paid $3,750.00" and who signed off.
-- [ ] The run button and sign-off controls appear only in the states where they apply.
-- [ ] `#/instructions` shows the same text as `GET /api/instructions`, with nothing to edit it.
+- [x] `npm run check:ts` passes, with vitest tests for the run button, the polling (with fake timers), the sign-off and the instructions page.
+- [x] In the browser: on a fresh database, clicking "Run the agent" on CLM-1001 moves it to In progress, the steps appear one by one without a reload, and the page settles on Decided with the decision and reasons. (One live model run.)
+- [x] In the browser: on CLM-1003 after the Phase 2 API steps (approved for $3,750.00, waiting for sign-off), choosing Dana Whitfield and clicking "Sign off and pay" moves it to Decided and shows "Paid $3,750.00" and who signed off.
+- [x] The run button and sign-off controls appear only in the states where they apply.
+- [x] `#/instructions` shows the same text as `GET /api/instructions`, with nothing to edit it.
 
 ## Phase 6: End-to-end tests and handover
 

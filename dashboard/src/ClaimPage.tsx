@@ -1,21 +1,34 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, errorMessage, type Claim, type Policy } from "./api";
+import { AgentActivity } from "./AgentActivity";
+import {
+  api,
+  errorMessage,
+  type Claim,
+  type Handler,
+  type Policy,
+  type Step,
+} from "./api";
 import { ClaimDetails } from "./ClaimDetails";
 import { DecisionPanel } from "./DecisionPanel";
 import { date, money, sentenceCase } from "./format";
 import { PolicyPanel } from "./PolicyPanel";
 import { StatusBadge } from "./StatusBadge";
+import { usePoll } from "./usePoll";
+
+export const CLAIM_POLL_MS = 2000;
 
 export function ClaimPage({ claimId }: Readonly<{ claimId: string }>) {
   const [claim, setClaim] = useState<Claim | null>(null);
+  const [steps, setSteps] = useState<Step[]>([]);
   const [policy, setPolicy] = useState<Policy | null>(null);
+  const [handlers, setHandlers] = useState<Handler[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    void api
-      .getClaim(claimId)
-      .then((loaded) => {
+    void Promise.all([api.getClaim(claimId), api.listSteps(claimId)])
+      .then(([loaded, loadedSteps]) => {
         setClaim(loaded);
+        setSteps(loadedSteps);
         setError(null);
       })
       .catch((caught: unknown) => {
@@ -24,6 +37,19 @@ export function ClaimPage({ claimId }: Readonly<{ claimId: string }>) {
   }, [claimId]);
 
   useEffect(load, [load]);
+  // The agent can still be paying after its decision moves the claim on, and
+  // every run ends with a reply or an error step.
+  const lastKind = steps.at(-1)?.kind;
+  const working =
+    claim?.status === "in_progress" ||
+    lastKind === "tool_call" ||
+    lastKind === "tool_result";
+  usePoll(load, CLAIM_POLL_MS, working);
+
+  const needsSignOff = claim?.status === "awaiting_sign_off";
+  useEffect(() => {
+    if (needsSignOff) void api.listHandlers().then(setHandlers);
+  }, [needsSignOff]);
 
   const policyId = claim?.policy_id;
   useEffect(() => {
@@ -71,7 +97,8 @@ export function ClaimPage({ claimId }: Readonly<{ claimId: string }>) {
           <ClaimDetails claim={claim} />
         </div>
         <div className="stack">
-          <DecisionPanel claim={claim} />
+          <DecisionPanel claim={claim} handlers={handlers} onChange={load} />
+          <AgentActivity steps={steps} working={working} />
           {policy && <PolicyPanel policy={policy} />}
         </div>
       </div>
